@@ -1,0 +1,75 @@
+# docker-compose.yml
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: blog_postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-blog_db}
+      POSTGRES_USER: ${POSTGRES_USER:-blog_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-blog_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-blog_user} -d ${POSTGRES_DB:-blog_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - blog_network
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blog_web_app
+    restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - static_volume:/app/blog_project/static
+      - media_volume:/app/blog_project/media
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - blog_network
+
+  init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blog_init
+    command: /bin/bash /app/docker/entrypoint.sh
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - blog_network
+    profiles:
+      - init
+
+volumes:
+  postgres_data:
+    name: blog_postgres_data
+  static_volume:
+    name: blog_static
+  media_volume:
+    name: blog_media
+
+networks:
+  blog_network:
+    name: blog_network
+    driver: bridge

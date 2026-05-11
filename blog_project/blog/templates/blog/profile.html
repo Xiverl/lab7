@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Профиль{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                {% if profile.avatar %}
+                <img src="{{ profile.avatar.url }}" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                {% else %}
+                <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 150px; height: 150px;">
+                    <i class="bi bi-person text-white" style="font-size: 4rem;"></i>
+                </div>
+                {% endif %}
+                <h4>{{ user.username }}</h4>
+                <span class="badge bg-{% if profile.role == 'admin' %}danger{% elif profile.role == 'moderator' %}warning{% else %}primary{% endif %}">
+                    {{ profile.get_role_display }}
+                </span>
+                <p class="text-muted mt-2">{{ user.email }}</p>
+                <p>{{ profile.bio|default:"Биография не заполнена" }}</p>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h5>{{ posts_count }}</h5>
+                        <small class="text-muted">Постов</small>
+                    </div>
+                    <div class="col-6">
+                        <h5>{{ comments_count }}</h5>
+                        <small class="text-muted">Комментариев</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Редактирование профиля</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label">
+                            {{ field.label }}
+                        </label>
+                        {{ field }}
+                        {% if field.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ field.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    
+                    <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

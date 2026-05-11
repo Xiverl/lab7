@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <article class="card mb-4">
+            {% if post.image %}
+            <img src="{{ post.image.url }}" class="card-img-top" alt="{{ post.title }}">
+            {% endif %}
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h1 class="card-title">{{ post.title }}</h1>
+                    {% if not post.is_published %}
+                    <span class="badge bg-warning">Черновик</span>
+                    {% endif %}
+                </div>
+                
+                <p class="text-muted">
+                    <small>
+                        <i class="bi bi-person"></i> Автор: {{ post.author.username }}
+                        {% if post.author.profile.role %}
+                        <span class="badge bg-{% if post.author.profile.role == 'admin' %}danger{% elif post.author.profile.role == 'moderator' %}warning{% else %}info{% endif %}">
+                            {{ post.author.profile.get_role_display }}
+                        </span>
+                        {% endif %}
+                        <br>
+                        <i class="bi bi-calendar"></i> 
+                        {% if post.published_date %}
+                        Опубликовано: {{ post.published_date|date:"d.m.Y H:i" }}
+                        {% else %}
+                        Создано: {{ post.created_date|date:"d.m.Y H:i" }}
+                        {% endif %}
+                        {% if post.updated_date != post.published_date and post.updated_date != post.created_date %}
+                        <br><i class="bi bi-pencil"></i> Обновлено: {{ post.updated_date|date:"d.m.Y H:i" }}
+                        {% endif %}
+                    </small>
+                </p>
+                
+                <div class="mb-3">
+                    {% for tag in post.tags.all %}
+                    <a href="{% url 'post_list' %}?tag={{ tag.slug }}" class="badge bg-secondary text-decoration-none">
+                        {{ tag.name }}
+                    </a>
+                    {% endfor %}
+                </div>
+
+                <div class="card-text">
+                    {{ post.content|linebreaks }}
+                </div>
+
+                <!-- Исправленный блок управления постом -->
+                {% if user.is_authenticated and can_edit or can_delete %}
+                <div class="mt-4 p-3 bg-light rounded border">
+                    <h6><i class="bi bi-shield-lock"></i> Управление постом</h6>
+                    
+                    {% if user != post.author %}
+                    <div class="alert alert-info mb-2">
+                        <i class="bi bi-info-circle"></i> 
+                        Вы управляете чужим постом как 
+                        <strong>{{ user.profile.get_role_display }}</strong>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="btn-group">
+                        {% if can_edit %}
+                        <a href="{% url 'post_update' post.slug %}" class="btn btn-warning">
+                            <i class="bi bi-pencil"></i> Редактировать
+                            {% if user.profile.is_moderator and user != post.author %}
+                            <small>(модерация)</small>
+                            {% endif %}
+                        </a>
+                        {% endif %}
+                        
+                        {% if can_delete %}
+                        <a href="{% url 'post_delete' post.slug %}" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Удалить
+                        </a>
+                        {% endif %}
+                    </div>
+                    
+                    {% if not post.is_published and can_edit %}
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <i class="bi bi-eye-slash"></i> Этот пост не опубликован и виден только автору, модераторам и администраторам.
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </article>
+
+        <!-- Комментарии -->
+        <section class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-chat-dots"></i> Комментарии ({{ comments.count }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if user.is_authenticated %}
+                <form method="post" class="mb-4">
+                    {% csrf_token %}
+                    {{ comment_form.as_p }}
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send"></i> Отправить
+                    </button>
+                </form>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 
+                    <a href="{% url 'login' %}" class="alert-link">Войдите</a>, чтобы оставить комментарий.
+                </div>
+                {% endif %}
+
+                {% for comment in comments %}
+                <div class="comment mb-3 pb-3 border-bottom">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <strong>{{ comment.author.username }}</strong>
+                            {% if comment.author.profile.role %}
+                            <span class="badge bg-{% if comment.author.profile.role == 'admin' %}danger{% elif comment.author.profile.role == 'moderator' %}warning{% else %}info{% endif %} ms-1">
+                                {{ comment.author.profile.get_role_display }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">{{ comment.created_date|date:"d.m.Y H:i" }}</small>
+                    </div>
+                    <p class="mt-2 mb-0">{{ comment.content }}</p>
+                </div>
+                {% empty %}
+                <p class="text-muted">
+                    <i class="bi bi-chat"></i> Комментариев пока нет. Будьте первым!
+                </p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Информация о посте -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> Информация
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="bi bi-person"></i> 
+                        <strong>Автор:</strong> {{ post.author.username }}
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-eye"></i> 
+                        <strong>Статус:</strong> 
+                        {% if post.is_published %}
+                        <span class="text-success">Опубликован</span>
+                        {% else %}
+                        <span class="text-warning">Черновик</span>
+                        {% endif %}
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-calendar"></i> 
+                        <strong>Создан:</strong> {{ post.created_date|date:"d.m.Y" }}
+                    </li>
+                    {% if post.published_date %}
+                    <li class="mb-2">
+                        <i class="bi bi-calendar-check"></i> 
+                        <strong>Опубликован:</strong> {{ post.published_date|date:"d.m.Y" }}
+                    </li>
+                    {% endif %}
+                    <li class="mb-2">
+                        <i class="bi bi-tags"></i> 
+                        <strong>Теги:</strong> {{ post.tags.count }}
+                    </li>
+                    <li>
+                        <i class="bi bi-chat-dots"></i> 
+                        <strong>Комментарии:</strong> {{ comments.count }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Об авторе -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-person-badge"></i> Об авторе
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-1"><strong>{{ post.author.username }}</strong></p>
+                {% if post.author.profile.role %}
+                <p class="mb-1">
+                    <span class="badge bg-{% if post.author.profile.role == 'admin' %}danger{% elif post.author.profile.role == 'moderator' %}warning{% else %}info{% endif %}">
+                        {{ post.author.profile.get_role_display }}
+                    </span>
+                </p>
+                {% endif %}
+                <p class="text-muted mb-0">Всего постов: {{ post.author.blog_posts.count }}</p>
+            </div>
+        </div>
+
+        <a href="{% url 'post_list' %}" class="btn btn-secondary w-100">
+            <i class="bi bi-arrow-left"></i> Назад к списку
+        </a>
+    </div>
+</div>
+{% endblock %}

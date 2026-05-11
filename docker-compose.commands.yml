@@ -1,0 +1,69 @@
+# docker-compose.commands.yml
+version: '3.8'
+
+services:
+  # Создание миграций
+  makemigrations:
+    build: .
+    container_name: blog_makemigrations
+    command: python manage.py makemigrations blog
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - blog_network
+    profiles:
+      - tools
+
+  # Создание суперпользователя
+  createsuperuser:
+    build: .
+    container_name: blog_createsuperuser
+    command: python manage.py createsuperuser
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - blog_network
+    profiles:
+      - tools
+
+  # Дамп базы данных
+  dumpdata:
+    build: .
+    container_name: blog_dumpdata
+    command: python manage.py dumpdata --natural-foreign --natural-primary --indent 2 -o /app/fixtures/dump.json
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - blog_network
+    profiles:
+      - tools
+
+  # Загрузка данных
+  loaddata:
+    build: .
+    container_name: blog_loaddata
+    command: python manage.py loaddata /app/fixtures/dump.json
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - blog_network
+    profiles:
+      - tools
